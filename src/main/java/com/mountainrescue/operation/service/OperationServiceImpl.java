@@ -1,0 +1,107 @@
+package com.mountainrescue.operation.service;
+
+import com.mountainrescue.operation.controller.dto.CreateMissionRequest;
+import com.mountainrescue.operation.controller.dto.CreateMissionResponse;
+import com.mountainrescue.operation.controller.dto.CreateRescueRequestRequest;
+import com.mountainrescue.operation.controller.dto.CreateRescueRequestResponse;
+import com.mountainrescue.operation.repository.EquipmentRepository;
+import com.mountainrescue.operation.repository.MissionRepository;
+import com.mountainrescue.operation.repository.MissingPersonRepository;
+import com.mountainrescue.operation.repository.RescueRequestRepository;
+import com.mountainrescue.operation.repository.entity.Equipment;
+import com.mountainrescue.operation.repository.entity.Mission;
+import com.mountainrescue.operation.repository.entity.MissingPerson;
+import com.mountainrescue.operation.repository.entity.RescueRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class OperationServiceImpl implements OperationService {
+
+    private static final String REQUEST_STATUS_RECEIVED = "received";
+
+    private final EquipmentRepository equipmentRepository;
+    private final MissingPersonRepository missingPersonRepository;
+    private final RescueRequestRepository rescueRequestRepository;
+    private final MissionRepository missionRepository;
+
+    @Override
+    public CreateRescueRequestResponse createRescueRequest(CreateRescueRequestRequest request) {
+        CreateRescueRequestRequest.MissingPersonRequest missingPersonRequest = request.getMissingPerson();
+        if (missingPersonRequest == null) {
+            throw new IllegalArgumentException("missingPerson is required");
+        }
+
+        MissingPerson missingPerson = MissingPerson.builder()
+                .name(missingPersonRequest.getName())
+                .age(missingPersonRequest.getAge())
+                .gender(missingPersonRequest.getGender())
+                .appearance(missingPersonRequest.getAppearance())
+                .lastKnownLocation(missingPersonRequest.getLastKnownLocation())
+                .simX(missingPersonRequest.getSimX())
+                .simY(missingPersonRequest.getSimY())
+                .simZ(missingPersonRequest.getSimZ())
+                .missingSince(missingPersonRequest.getMissingSince())
+                .notes(missingPersonRequest.getNotes())
+                .build();
+        MissingPerson savedMissingPerson = missingPersonRepository.save(missingPerson);
+
+        RescueRequest rescueRequest = RescueRequest.builder()
+                .missingPerson(savedMissingPerson)
+                .reporterType(request.getReporterType())
+                .simX(request.getSimX())
+                .simY(request.getSimY())
+                .simZ(request.getSimZ())
+                .status(REQUEST_STATUS_RECEIVED)
+                .requestedAt(OffsetDateTime.now())
+                .notes(request.getNotes())
+                .build();
+        RescueRequest savedRescueRequest = rescueRequestRepository.save(rescueRequest);
+
+        return new CreateRescueRequestResponse(
+                savedMissingPerson.getId(),
+                savedRescueRequest.getId(),
+                savedRescueRequest.getStatus(),
+                savedRescueRequest.getRequestedAt()
+        );
+    }
+
+    @Override
+    public CreateMissionResponse createMission(CreateMissionRequest request) {
+        Equipment equipment = getEquipment(request.getEquipmentId());
+        RescueRequest rescueRequest = null;
+        if (request.getRescueRequestId() != null) {
+            rescueRequest = rescueRequestRepository.findById(request.getRescueRequestId())
+                    .orElseThrow(() -> new IllegalArgumentException("rescueRequest not found: " + request.getRescueRequestId()));
+        }
+
+        Mission mission = Mission.builder()
+                .rescueRequest(rescueRequest)
+                .equipment(equipment)
+                .simX(request.getSimX())
+                .simY(request.getSimY())
+                .simZ(request.getSimZ())
+                .createdAt(OffsetDateTime.now())
+                .build();
+        Mission savedMission = missionRepository.save(mission);
+
+        return new CreateMissionResponse(
+                savedMission.getId(),
+                rescueRequest == null ? null : rescueRequest.getId(),
+                equipment.getId()
+        );
+    }
+
+    private Equipment getEquipment(Integer equipmentId) {
+        if (equipmentId == null) {
+            throw new IllegalArgumentException("equipmentId is required");
+        }
+        return equipmentRepository.findById(equipmentId)
+                .orElseThrow(() -> new IllegalArgumentException("equipment not found: " + equipmentId));
+    }
+}
