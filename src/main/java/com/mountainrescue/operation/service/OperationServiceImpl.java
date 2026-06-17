@@ -4,13 +4,17 @@ import com.mountainrescue.operation.controller.dto.CreateMissionRequest;
 import com.mountainrescue.operation.controller.dto.CreateMissionResponse;
 import com.mountainrescue.operation.controller.dto.CreateRescueRequestRequest;
 import com.mountainrescue.operation.controller.dto.CreateRescueRequestResponse;
+import com.mountainrescue.operation.controller.dto.StartRecordRequest;
+import com.mountainrescue.operation.controller.dto.StartRecordResponse;
 import com.mountainrescue.operation.repository.EquipmentRepository;
 import com.mountainrescue.operation.repository.MissionRepository;
 import com.mountainrescue.operation.repository.MissingPersonRepository;
+import com.mountainrescue.operation.repository.RecordRepository;
 import com.mountainrescue.operation.repository.RescueRequestRepository;
 import com.mountainrescue.operation.repository.entity.Equipment;
 import com.mountainrescue.operation.repository.entity.Mission;
 import com.mountainrescue.operation.repository.entity.MissingPerson;
+import com.mountainrescue.operation.repository.entity.Record;
 import com.mountainrescue.operation.repository.entity.RescueRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +33,7 @@ public class OperationServiceImpl implements OperationService {
     private final MissingPersonRepository missingPersonRepository;
     private final RescueRequestRepository rescueRequestRepository;
     private final MissionRepository missionRepository;
+    private final RecordRepository recordRepository;
 
     @Override
     public CreateRescueRequestResponse createRescueRequest(CreateRescueRequestRequest request) {
@@ -95,6 +100,34 @@ public class OperationServiceImpl implements OperationService {
                 rescueRequest == null ? null : rescueRequest.getId(),
                 equipment.getId()
         );
+    }
+
+    @Override
+    public StartRecordResponse startRecord(StartRecordRequest request) {
+        Equipment equipment = getEquipment(request.getEquipmentId());
+        Mission mission = getMission(request.getMissionId());
+
+        Record record = Record.builder()
+                .equipment(equipment)
+                .mission(mission)
+                .startTime(OffsetDateTime.now())
+                .build();
+        Record savedRecord = recordRepository.save(record);
+
+        return new StartRecordResponse(
+                savedRecord.getId(),
+                equipment.getId(),
+                mission.getId(),
+                savedRecord.getStartTime()
+        );
+    }
+
+    private Mission getMission(Integer missionId) {
+        if (missionId == null) {
+            throw new IllegalArgumentException("missionId is required");
+        }
+        return missionRepository.findById(missionId)
+                .orElseThrow(() -> new IllegalArgumentException("mission not found: " + missionId));
     }
 
     private Equipment getEquipment(Integer equipmentId) {

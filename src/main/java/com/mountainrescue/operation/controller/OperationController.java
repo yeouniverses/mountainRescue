@@ -5,6 +5,8 @@ import com.mountainrescue.operation.controller.dto.CreateMissionRequest;
 import com.mountainrescue.operation.controller.dto.CreateMissionResponse;
 import com.mountainrescue.operation.controller.dto.CreateRescueRequestRequest;
 import com.mountainrescue.operation.controller.dto.CreateRescueRequestResponse;
+import com.mountainrescue.operation.controller.dto.StartRecordRequest;
+import com.mountainrescue.operation.controller.dto.StartRecordResponse;
 import com.mountainrescue.operation.service.OperationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,5 +29,10 @@ public class OperationController {
     @PostMapping("/mission")
     public CreateMissionResponse createMission(@RequestBody CreateMissionRequest request) {
         return operationService.createMission(request);
+    }
+
+    @PostMapping("/record-start")
+    public ApiResponse<StartRecordResponse> startRecord(@RequestBody StartRecordRequest request) {
+        return ApiResponse.success(operationService.startRecord(request));
     }
 }
