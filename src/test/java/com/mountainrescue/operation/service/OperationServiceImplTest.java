@@ -1,0 +1,112 @@
+package com.mountainrescue.operation.service;
+
+import com.mountainrescue.operation.controller.dto.StartRecordRequest;
+import com.mountainrescue.operation.controller.dto.StartRecordResponse;
+import com.mountainrescue.operation.repository.EquipmentRepository;
+import com.mountainrescue.operation.repository.MissionRepository;
+import com.mountainrescue.operation.repository.MissingPersonRepository;
+import com.mountainrescue.operation.repository.RecordRepository;
+import com.mountainrescue.operation.repository.RescueRequestRepository;
+import com.mountainrescue.operation.repository.entity.Equipment;
+import com.mountainrescue.operation.repository.entity.Mission;
+import com.mountainrescue.operation.repository.entity.Record;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OperationServiceImplTest {
+
+    @Mock
+    private EquipmentRepository equipmentRepository;
+
+    @Mock
+    private MissingPersonRepository missingPersonRepository;
+
+    @Mock
+    private RescueRequestRepository rescueRequestRepository;
+
+    @Mock
+    private MissionRepository missionRepository;
+
+    @Mock
+    private RecordRepository recordRepository;
+
+    @InjectMocks
+    private OperationServiceImpl operationService;
+
+    @Test
+    void startRecordThrowsExceptionWhenMissionIdIsNull() {
+        StartRecordRequest request = new StartRecordRequest();
+        request.setEquipmentId(1);
+
+        Equipment equipment = equipment(1);
+        when(equipmentRepository.findById(1)).thenReturn(Optional.of(equipment));
+
+        assertThatThrownBy(() -> operationService.startRecord(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("missionId is required");
+    }
+
+    @Test
+    void startRecordThrowsExceptionWhenMissionDoesNotExist() {
+        StartRecordRequest request = new StartRecordRequest();
+        request.setEquipmentId(1);
+        request.setMissionId(99);
+
+        Equipment equipment = equipment(1);
+        when(equipmentRepository.findById(1)).thenReturn(Optional.of(equipment));
+        when(missionRepository.findById(99)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> operationService.startRecord(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("mission not found: 99");
+    }
+
+    @Test
+    void startRecordSavesRecordWithMission() {
+        StartRecordRequest request = new StartRecordRequest();
+        request.setEquipmentId(1);
+        request.setMissionId(10);
+
+        Equipment equipment = equipment(1);
+        Mission mission = Mission.builder()
+                .id(10)
+                .equipment(equipment)
+                .build();
+
+        when(equipmentRepository.findById(1)).thenReturn(Optional.of(equipment));
+        when(missionRepository.findById(10)).thenReturn(Optional.of(mission));
+        when(recordRepository.save(any(Record.class))).thenAnswer(invocation -> {
+            Record record = invocation.getArgument(0);
+            ReflectionTestUtils.setField(record, "id", 100);
+            return record;
+        });
+
+        StartRecordResponse response = operationService.startRecord(request);
+
+        assertThat(response.recordId()).isEqualTo(100);
+        assertThat(response.equipmentId()).isEqualTo(1);
+        assertThat(response.missionId()).isEqualTo(10);
+        assertThat(response.startTime()).isNotNull();
+
+        verify(recordRepository).save(any(Record.class));
+    }
+
+    private Equipment equipment(Integer id) {
+        Equipment equipment = new Equipment();
+        ReflectionTestUtils.setField(equipment, "id", id);
+        return equipment;
+    }
+}
