@@ -1,5 +1,7 @@
 package com.mountainrescue.operation.service;
 
+import com.mountainrescue.operation.controller.dto.CreateFrameRequest;
+import com.mountainrescue.operation.controller.dto.CreateFrameResponse;
 import com.mountainrescue.operation.controller.dto.CreateMissionRequest;
 import com.mountainrescue.operation.controller.dto.CreateMissionResponse;
 import com.mountainrescue.operation.controller.dto.CreateRescueRequestRequest;
@@ -7,11 +9,13 @@ import com.mountainrescue.operation.controller.dto.CreateRescueRequestResponse;
 import com.mountainrescue.operation.controller.dto.StartRecordRequest;
 import com.mountainrescue.operation.controller.dto.StartRecordResponse;
 import com.mountainrescue.operation.repository.EquipmentRepository;
+import com.mountainrescue.operation.repository.FrameRepository;
 import com.mountainrescue.operation.repository.MissionRepository;
 import com.mountainrescue.operation.repository.MissingPersonRepository;
 import com.mountainrescue.operation.repository.RecordRepository;
 import com.mountainrescue.operation.repository.RescueRequestRepository;
 import com.mountainrescue.operation.repository.entity.Equipment;
+import com.mountainrescue.operation.repository.entity.Frame;
 import com.mountainrescue.operation.repository.entity.Mission;
 import com.mountainrescue.operation.repository.entity.MissingPerson;
 import com.mountainrescue.operation.repository.entity.Record;
@@ -34,6 +38,7 @@ public class OperationServiceImpl implements OperationService {
     private final RescueRequestRepository rescueRequestRepository;
     private final MissionRepository missionRepository;
     private final RecordRepository recordRepository;
+    private final FrameRepository frameRepository;
 
     @Override
     public CreateRescueRequestResponse createRescueRequest(CreateRescueRequestRequest request) {
@@ -120,6 +125,41 @@ public class OperationServiceImpl implements OperationService {
                 mission.getId(),
                 savedRecord.getStartTime()
         );
+    }
+
+    @Override
+    public CreateFrameResponse createFrame(CreateFrameRequest request) {
+        Record record = getRecord(request.getRecordId());
+
+
+        OffsetDateTime time = OffsetDateTime.now();
+
+        Frame frame = Frame.builder()
+                .record(record)
+                .simX(request.getSimX())
+                .simY(request.getSimY())
+                .simZ(request.getSimZ())
+                .roll(request.getRoll())
+                .pitch(request.getPitch())
+                .yaw(request.getYaw())
+                .batteryPct(request.getBatteryPct())
+                .time(time)
+                .build();
+        Frame savedFrame = frameRepository.save(frame);
+
+        return new CreateFrameResponse(
+                record.getId(),
+                savedFrame.getId(),
+                savedFrame.getTime()
+        );
+    }
+
+    private Record getRecord(Integer recordId) {
+        if (recordId == null) {
+            throw new IllegalArgumentException("recordId is required");
+        }
+        return recordRepository.findById(recordId)
+                .orElseThrow(() -> new IllegalArgumentException("record not found: " + recordId));
     }
 
     private Mission getMission(Integer missionId) {
