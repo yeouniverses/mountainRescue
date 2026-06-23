@@ -1,6 +1,8 @@
 package com.mountainrescue.operation.controller;
 
 import com.mountainrescue.operation.controller.dto.ApiResponse;
+import com.mountainrescue.operation.controller.dto.CreateFrameRequest;
+import com.mountainrescue.operation.controller.dto.CreateFrameResponse;
 import com.mountainrescue.operation.controller.dto.CreateMissionRequest;
 import com.mountainrescue.operation.controller.dto.CreateMissionResponse;
 import com.mountainrescue.operation.controller.dto.CreateRescueRequestRequest;
@@ -34,5 +36,10 @@ public class OperationController {
     @PostMapping("/record-start")
     public ApiResponse<StartRecordResponse> startRecord(@RequestBody StartRecordRequest request) {
         return ApiResponse.success(operationService.startRecord(request));
+    }
+
+    @PostMapping({"/frame", "/create-frame"})
+    public ApiResponse<CreateFrameResponse> createFrame(@RequestBody CreateFrameRequest request) {
+        return ApiResponse.success(operationService.createFrame(request));
     }
 }
